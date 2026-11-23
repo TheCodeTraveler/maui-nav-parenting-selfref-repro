@@ -3,6 +3,7 @@
 import json, os, re, sys
 
 # leg -> (description, [(label, expected, predicate)])
+PARENTING_LINE = re.compile(r"^.*NavigationHandlerParentingViewController\S*ChildViewControllerForStatusBarHidden.*$", re.M)
 def has(text, needle): return needle in text
 def result(text, key):
     m = re.search(r"C09_RESULT .*" + key + r"=(\w+)", text)
@@ -23,7 +24,7 @@ legs = {
         ("trigger ran", "C09_TRIGGER_BEGIN present", has(t, "C09_TRIGGER_BEGIN disconnectBeforeSwap=True")),
         ("app did not survive", "no C09_SURVIVED", not has(t, "C09_SURVIVED")),
         ("native stack overflow", "'Stack overflow' in the log", "Stack overflow" in t),
-        ("recursion is the parenting VC callback", "ChildViewControllerForStatusBarHidden in the log", "ChildViewControllerForStatusBarHidden" in t),
+        ("recursion is the parenting VC callback", "a line matching NavigationHandlerParentingViewController...ChildViewControllerForStatusBarHidden: " + (PARENTING_LINE.search(t).group(0).strip()[:200] if PARENTING_LINE.search(t) else "none"), bool(PARENTING_LINE.search(t))),
     ]),
     "control-crash": ("replace the root view controller, then DisconnectHandlers()", lambda t: [
         ("trigger ran", "C09_TRIGGER_BEGIN present", has(t, "C09_TRIGGER_BEGIN disconnectBeforeSwap=False")),

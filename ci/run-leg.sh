@@ -10,4 +10,10 @@ perl -e 'alarm shift; exec @ARGV' 120 \
   xcrun simctl launch --console-pty --terminate-running-process "$UDID" com.example.mauinavparentingselfref --mode="$mode" 2>&1 | tee "artifacts/console-$leg.txt" || true
 # The crash report, if the app died, is the second proof of the recursion.
 mkdir -p "artifacts/crash-$leg"
-find "$HOME/Library/Logs/DiagnosticReports" -name 'NavParentingSelfRef*' -newermt '-3 minutes' -exec cp {} "artifacts/crash-$leg/" \; 2>/dev/null || true
+# ReportCrash writes the .ips after the process dies; the file is named after the executable (AssemblyName).
+for _ in $(seq 1 30); do
+  found=$(find "$HOME/Library/Logs/DiagnosticReports" -name 'MauiNavParentingSelfRefRepro*.ips' -newermt '-3 minutes' 2>/dev/null)
+  [ -n "$found" ] && break
+  case "$leg" in bug-crash) sleep 1 ;; *) break ;; esac
+done
+find "$HOME/Library/Logs/DiagnosticReports" -name 'MauiNavParentingSelfRefRepro*.ips' -newermt '-3 minutes' -exec cp {} "artifacts/crash-$leg/" \; 2>/dev/null || true

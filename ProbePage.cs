@@ -87,11 +87,11 @@ public class ProbePage : ContentPage
 		if (disconnectBeforeSwap)
 		{
 			navigationPage.DisconnectHandlers();
-			uiWindow.RootViewController = new UIViewController();
+			uiWindow.RootViewController = null;
 		}
 		else
 		{
-			uiWindow.RootViewController = new UIViewController();
+			uiWindow.RootViewController = null;
 			navigationPage.DisconnectHandlers();
 		}
 

@@ -31,9 +31,9 @@ jobs:
         with:
           global-json-file: global.json
 
-      - name: Install the iOS workload
+      - name: Install the MAUI iOS workload
         run: |
-          dotnet workload install ios --version 11.0.100.1
+          dotnet workload install maui-ios --version 11.0.100.1
           dotnet --info
 
       - name: Build the app
