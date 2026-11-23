@@ -1,0 +1,78 @@
+name: Repro
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  repro:
+    # The GitHub-hosted image with Xcode 27.x and the iOS 27 simulator runtimes.
+    runs-on: xcode-27
+    timeout-minutes: 45
+    steps:
+      - name: Setup checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90 # v1
+        with:
+          xcode-version: '27.2'
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          global-json-file: global.json
+
+      - name: Install the iOS workload
+        run: |
+          dotnet workload install ios --version 11.0.100.1
+          dotnet --info
+
+      - name: Build the app
+        run: dotnet build -c Release -bl:msbuild.binlog
+
+      - name: Setup and boot a simulator
+        run: |
+          runtime=$(xcrun simctl list -j runtimes | jq -r '[.runtimes[] | select(.platform == "iOS" and .isAvailable and (.identifier | test("^com\\.apple\\.CoreSimulator\\.SimRuntime\\.iOS-[0-9]+-[0-9]+$")))] | sort_by(.version | split(".") | map(tonumber)) | last | .identifier')
+          device_type=$(xcrun simctl list -j runtimes | jq -r --arg id "$runtime" '[.runtimes[] | select(.identifier == $id)][0].supportedDeviceTypes | map(select(.productFamily == "iPhone")) | first | .identifier')
+          echo "Runtime: $runtime, device type: $device_type" | tee -a "$GITHUB_STEP_SUMMARY"
+          udid=$(xcrun simctl create NavParentingRepro "$device_type" "$runtime")
+          echo "UDID=$udid" >> "$GITHUB_ENV"
+          xcrun simctl boot "$udid"
+          xcrun simctl bootstatus "$udid" -b
+
+      - name: Run bug leg bug-self-return
+        run: bash ci/run-leg.sh bug-self-return self-bug
+
+      - name: Run control leg control-self-return
+        run: bash ci/run-leg.sh control-self-return self-control
+
+      - name: Run bug leg bug-crash
+        run: bash ci/run-leg.sh bug-crash crash-bug
+
+      - name: Run control leg control-crash
+        run: bash ci/run-leg.sh control-crash crash-control
+
+      - name: Assert every leg
+        run: python3 ci/assert-legs.py
+
+      - name: Delete the simulator
+        if: always()
+        run: xcrun simctl delete "$UDID" || true
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: repro-logs
+          path: |
+            msbuild.binlog
+            artifacts/
