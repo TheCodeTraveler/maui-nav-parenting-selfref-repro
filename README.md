@@ -40,7 +40,7 @@ There is no fix leg: the view controller is `internal sealed` and created inside
 
 CI: https://github.com/TheCodeTraveler/maui-nav-parenting-selfref-repro/actions/runs/45941516764 (green = bug legs show the bug, controls clean). All runs: https://github.com/TheCodeTraveler/maui-nav-parenting-selfref-repro/actions
 
-Upstream issue: (to be filed)
+Upstream issue: https://github.com/dotnet/maui/issues/40689
 
 ## Root cause and fix
 
