@@ -19,7 +19,7 @@ Modes: `self-bug`, `self-control`, `crash-bug`, `crash-control`.
 | Mode | Observed (11.0.10) | Expected |
 |---|---|---|
 | `self-bug` | `statusBarHiddenReturnsSelf=True homeIndicatorReturnsSelf=True` | `False` for both |
-| `crash-bug` | `Stack overflow` in `ChildViewControllerForStatusBarHidden` in `NavigationHandlerParentingViewController`; no `C09_SURVIVED`; the crash report shows `-[UIViewController _effectiveStatusBarHiddenViewController]` recursing 173,673 frames deep (run 1) | app survives |
+| `crash-bug` | `Stack overflow` in `ChildViewControllerForStatusBarHidden` in `NavigationHandlerParentingViewController`; no `C09_SURVIVED`; the crash report shows `-[UIViewController _effectiveStatusBarHiddenViewController]` recursing 173,674 frames deep (run 45941516764) | app survives |
 
 ## Versions
 
@@ -38,7 +38,7 @@ Each leg fails when its log is missing or its marker line is absent. The workflo
 
 There is no fix leg: the view controller is `internal sealed` and created inside `NavigationViewHandler`, so user code cannot replace or subclass it. The workaround is the control order: replace the window's root before disconnecting a `NavigationPage`.
 
-CI: (run link added after the first run)
+CI: https://github.com/TheCodeTraveler/maui-nav-parenting-selfref-repro/actions/runs/45941516764 (green = bug legs show the bug, controls clean). All runs: https://github.com/TheCodeTraveler/maui-nav-parenting-selfref-repro/actions
 
 Upstream issue: (to be filed)
 
