@@ -34,7 +34,7 @@ Modes: `self-bug`, `self-control`, `crash-bug`, `crash-control`.
 | `bug-crash` | `NavigationPage.DisconnectHandlers()`, then set `UIWindow.RootViewController = null` | `C09_TRIGGER_BEGIN`, no `C09_SURVIVED`, `Stack overflow`, and a log line matching `NavigationHandlerParentingViewController\S*ChildViewControllerForStatusBarHidden` (shown in the summary) |
 | `control-crash` | `RootViewController = null` first, then `DisconnectHandlers()` (the order MAUI uses itself) | `C09_SURVIVED`, no `Stack overflow` |
 
-Each leg fails when its log is missing or its marker line is absent. The workflow is green only when every bug leg shows the bug and every control leg is clean. The summary table lists expected vs observed per leg; logs and crash reports are uploaded as artifacts.
+Each leg fails when its log is missing or its marker line is absent. The workflow is green only when every bug leg shows the bug and every control leg is clean. The job summary opens with one line (bug reproduced yes/no, control clean yes/no), then lists expected vs observed per leg and each leg's `C09_START` line; logs and crash reports are uploaded as artifacts.
 
 There is no fix leg: the view controller is `internal sealed` and created inside `NavigationViewHandler`, so user code cannot replace or subclass it. The workaround is the control order: replace the window's root before disconnecting a `NavigationPage`.
 
