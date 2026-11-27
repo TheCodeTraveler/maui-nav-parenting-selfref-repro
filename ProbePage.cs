@@ -13,6 +13,12 @@ public class ProbePage : ContentPage
 	const string modeCrashBug = "crash-bug";
 	const string modeCrashControl = "crash-control";
 
+	// The navigation stack must finish its first layout pass before handlers are disconnected.
+	static readonly TimeSpan initialNavigationSettleTime = TimeSpan.FromMilliseconds(1500);
+
+	// UIKit queries the status bar child on a later layout pass, so the process must outlive the trigger.
+	static readonly TimeSpan lateStatusBarWalkWindow = TimeSpan.FromSeconds(3);
+
 	bool hasStarted;
 
 	public ProbePage() => Content = new Label { Text = "Running, see the console output" };
@@ -28,7 +34,7 @@ public class ProbePage : ContentPage
 		hasStarted = true;
 		var mode = GetModeFromLaunchArguments();
 		Console.WriteLine($"C09_START mode={mode} runtime={System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription} os={UIDevice.CurrentDevice.SystemVersion}");
-		await Task.Delay(1500);
+		await Task.Delay(initialNavigationSettleTime);
 
 		switch (mode)
 		{
@@ -95,7 +101,7 @@ public class ProbePage : ContentPage
 			navigationPage.DisconnectHandlers();
 		}
 
-		await Task.Delay(3000);
+		await Task.Delay(lateStatusBarWalkWindow);
 		Console.WriteLine("C09_SURVIVED");
 	}
 }

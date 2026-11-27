@@ -1,10 +1,10 @@
 # maui-nav-parenting-selfref-repro
 
-On iOS, `NavigationHandlerParentingViewController` (the view controller `NavigationViewHandler` puts in every `NavigationPage`) returns **itself** from `ChildViewControllerForStatusBarHidden()` and `ChildViewControllerForHomeIndicatorAutoHidden` once its page's handler is disconnected. UIKit expects a child view controller or `nil`, so it asks the same controller again until the native stack overflows.
+On iOS, `NavigationHandlerParentingViewController` (the view controller `NavigationViewHandler` puts in every `NavigationPage`) returns **itself** from `ChildViewControllerForStatusBarHidden()` and `ChildViewControllerForHomeIndicatorAutoHidden` once its page's handler is disconnected (both shown by value). UIKit expects a child view controller or `nil`, so the status-bar walk asks the same controller again until the native stack overflows (shown by the crash leg).
 
 ## Reproduce
 
-Needs macOS with Xcode 27 and the MAUI iOS workload (`dotnet workload install maui-ios --version 11.0.100.1`):
+Needs macOS with Xcode 27.2 (the 11.0.100.1 packs need it), an iPhone simulator booted (`xcrun simctl boot <UDID>`), and the MAUI iOS workload (`dotnet workload install maui-ios --version 11.0.100.1`):
 
 ```sh
 dotnet build -c Release
@@ -19,7 +19,7 @@ Modes: `self-bug`, `self-control`, `crash-bug`, `crash-control`.
 | Mode | Observed (11.0.10) | Expected |
 |---|---|---|
 | `self-bug` | `statusBarHiddenReturnsSelf=True homeIndicatorReturnsSelf=True` | `False` for both |
-| `crash-bug` | `Stack overflow` in `ChildViewControllerForStatusBarHidden` in `NavigationHandlerParentingViewController` under `UIWindow.set_RootViewController(null)`; no `C09_SURVIVED` | app survives |
+| `crash-bug` | `Stack overflow` in `ChildViewControllerForStatusBarHidden` in `NavigationHandlerParentingViewController`; no `C09_SURVIVED` | app survives |
 
 ## Versions
 
@@ -30,7 +30,7 @@ Modes: `self-bug`, `self-control`, `crash-bug`, `crash-control`.
 | Leg | Trigger | Passes when |
 |---|---|---|
 | `bug-self-return` | `DisconnectHandlers()` on the page, then ask the parenting VC for its status-bar and home-indicator children | both return the parenting VC itself |
-| `control-self-return` | same, without the disconnect | both return the page's VC (not itself) |
+| `control-self-return` | same, without the disconnect | neither returns the parenting VC itself |
 | `bug-crash` | `NavigationPage.DisconnectHandlers()`, then set `UIWindow.RootViewController = null` | `C09_TRIGGER_BEGIN`, no `C09_SURVIVED`, `Stack overflow`, and a log line matching `NavigationHandlerParentingViewController\S*ChildViewControllerForStatusBarHidden` (shown in the summary) |
 | `control-crash` | `RootViewController = null` first, then `DisconnectHandlers()` (the order MAUI uses itself) | `C09_SURVIVED`, no `Stack overflow` |
 

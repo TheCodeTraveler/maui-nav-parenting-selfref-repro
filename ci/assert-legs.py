@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
-"""Asserts every leg's console log; writes the step summary table and results.json. Exit 1 if any leg is wrong."""
 import json, os, re, sys
 
-# leg -> (description, [(label, expected, predicate)])
 PARENTING_LINE = re.compile(r"^.*NavigationHandlerParentingViewController\S*ChildViewControllerForStatusBarHidden.*$", re.M)
 def has(text, needle): return needle in text
 def result(text, key):
@@ -14,7 +12,6 @@ def parenting_frame(t):
     m = PARENTING_LINE.search(t)
     return m.group(0).strip()[:200] if m else "none"
 
-# leg -> (description, checks(text) -> [(label, expected, observed, passed)])
 legs = {
     "bug-self-return": ("page handler disconnected, UIKit queries the parenting VC", lambda t: [
         ("started", "C09_START present", yn(t, "C09_START mode=self-bug"), has(t, "C09_START mode=self-bug")),
