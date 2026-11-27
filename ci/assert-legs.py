@@ -1,5 +1,38 @@
 #!/usr/bin/env python3
-import json, os, re, sys
+import glob, json, os, re, sys
+
+RECURSION_SYMBOL = "-[UIViewController _effectiveStatusBarHiddenViewController]"
+MIN_RECURSION_DEPTH = 1000
+
+def leg_pid(leg):
+    path = f"artifacts/pid-{leg}.txt"
+    return open(path).read().strip() if os.path.exists(path) else ""
+
+def crash_reports(leg):
+    """Parsed .ips reports in artifacts/crash-<leg>/ that belong to the leg's own process."""
+    pid = leg_pid(leg)
+    reports = []
+    for path in sorted(glob.glob(f"artifacts/crash-{leg}/*.ips")):
+        try:
+            body = json.loads(open(path, errors="replace").read().split("\n", 1)[1])
+        except (IndexError, ValueError):
+            continue
+        if str(body.get("pid")) == pid:
+            reports.append(body)
+    return reports
+
+def recursion_of(leg):
+    """(keyFrame symbol, depth) of the faulting thread's recursion, or (None, 0)."""
+    for body in crash_reports(leg):
+        for thread in body.get("threads", []):
+            if thread.get("triggered") and thread.get("recursionInfoArray"):
+                info = thread["recursionInfoArray"][0]
+                return info.get("keyFrame", {}).get("symbol"), int(info.get("depth", 0))
+    return None, 0
+
+def recursion_observed(leg):
+    symbol, depth = recursion_of(leg)
+    return f"{symbol} depth {depth}" if symbol else f"no crash report for pid {leg_pid(leg) or 'unknown'}"
 
 PARENTING_LINE = re.compile(r"^.*NavigationHandlerParentingViewController\S*ChildViewControllerForStatusBarHidden.*$", re.M)
 def has(text, needle): return needle in text
@@ -28,11 +61,14 @@ legs = {
         ("app did not survive", "no C09_SURVIVED", "C09_SURVIVED " + yn(t, "C09_SURVIVED"), not has(t, "C09_SURVIVED")),
         ("native stack overflow", "'Stack overflow' in the log", "'Stack overflow' " + yn(t, "Stack overflow"), "Stack overflow" in t),
         ("recursion is the parenting VC callback", "a line matching NavigationHandlerParentingViewController...ChildViewControllerForStatusBarHidden", parenting_frame(t), bool(PARENTING_LINE.search(t))),
+        ("crash report shows native recursion", f"report for the leg's pid, key frame {RECURSION_SYMBOL}, depth > {MIN_RECURSION_DEPTH}", recursion_observed("bug-crash"),
+         recursion_of("bug-crash")[0] == RECURSION_SYMBOL and recursion_of("bug-crash")[1] > MIN_RECURSION_DEPTH),
     ]),
     "control-crash": ("replace the root view controller, then DisconnectHandlers()", lambda t: [
         ("trigger ran", "C09_TRIGGER_BEGIN present", "C09_TRIGGER_BEGIN " + yn(t, "C09_TRIGGER_BEGIN disconnectBeforeSwap=False"), has(t, "C09_TRIGGER_BEGIN disconnectBeforeSwap=False")),
         ("app survived", "C09_SURVIVED present", "C09_SURVIVED " + yn(t, "C09_SURVIVED"), has(t, "C09_SURVIVED")),
         ("no stack overflow", "'Stack overflow' absent", "'Stack overflow' " + yn(t, "Stack overflow"), "Stack overflow" not in t),
+        ("no crash report", f"no report for the leg's pid {leg_pid('control-crash') or 'unknown'}", f"{len(crash_reports('control-crash'))} report(s)", not crash_reports("control-crash")),
     ]),
 }
 
